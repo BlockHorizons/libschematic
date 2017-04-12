@@ -1,15 +1,13 @@
 <?php
 namespace schematic;
 
-use pocketmine\nbt\NBT;
-use pocketmine\nbt\tag\StringTag;
-use pocketmine\nbt\tag\IntTag;
-use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\ByteArrayTag;
-use pocketmine\nbt\tag\ShortTag;
-use pocketmine\utils\Binary;
 use pocketmine\block\Block;
 use pocketmine\item\Item;
+use pocketmine\nbt\NBT;
+use pocketmine\nbt\tag\ByteArrayTag;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\ShortTag;
+use pocketmine\nbt\tag\StringTag;
 use pocketmine\Server;
 
 class Schematic {
@@ -18,10 +16,12 @@ class Schematic {
 	 * For schematics exported from Minecraft Alpha and newer
 	 */
 	const MATERIALS_ALPHA = "Alpha";
+
 	/**
 	 * For schematics exported from Minecraft Classic
 	 */
 	const MATERIALS_CLASSIC = "Classic";
+
 	/**
 	 * Fallback
 	 */
@@ -54,7 +54,7 @@ class Schematic {
 	/**
 	 * @param string $data Schematic file contents
 	 */
-	public function __construct(string $data) {
+	public function __construct(string $data = "") {
 		$this->raw = $data;
 	}
 
@@ -205,9 +205,9 @@ class Schematic {
 		$bytes 	= array_values(unpack("c*", $blocks));
 		$meta 	= array_values(unpack("c*", $meta));
 		$realBlocks = [];
-		for ($x=0; $x < $width; $x++) { 
-			for ($y=0; $y < $height; $y++) { 
-				for ($z=0; $z < $length; $z++) { 
+		for ($x = 0; $x < $width; $x++) {
+			for ($y = 0; $y < $height; $y++) {
+				for ($z = 0; $z < $length; $z++) {
 					$index = ($y*$length + $z)*$width + $x;
 					$block = Block::get($bytes[$index]);
 					$block->setComponents($x, $y, $z);
@@ -228,9 +228,9 @@ class Schematic {
 	public static function encodeBlocks(array $blocks, int $height, int $width, int $length): array {
 		$meta = "";
 		$data = "";
-		for ($x=0; $x < $width; $x++) { 
-			for ($y=0; $y < $height; $y++) { 
-				for ($z=0; $z < $length; $z++) { 
+		for ($x = 0; $x < $width; $x++) {
+			for ($y = 0; $y < $height; $y++) {
+				for ($z = 0; $z < $length; $z++) {
 					$index = ($y*$length + $z)*$width + $x;
 					$block = $blocks[$index];
 					$data .= pack("c", $block->getId());
