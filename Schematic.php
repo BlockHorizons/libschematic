@@ -26,12 +26,15 @@ class Schematic {
 	 * Fallback
 	 */
 	const MATERIALS_UNKNOWN = "Unknown";
-		
+
+	/** @var string */
+	public $raw;
+
 	/**
 	 * Order YXZ:
-	 * Height 	- Along Y axis
-	 * Width 	- Along X axis
-	 * Length 	- Along Z axis
+	 * Height    - Along Y axis
+	 * Width    - Along X axis
+	 * Length    - Along Z axis
 	 * @var int
 	 */
 	protected $height, $width, $length;
@@ -48,9 +51,6 @@ class Schematic {
 	/** @var CompoundTag */
 	protected $tileEntities;
 
-	/** @var string */
-	public $raw;
-
 	/**
 	 * @param string $data Schematic file contents
 	 */
@@ -65,7 +65,7 @@ class Schematic {
 		if(empty($this->raw)) {
 			throw new \InvalidStateException("no data to decode");
 		}
-		try{
+		try {
 			$nbt = $this->getNBT();
 			$data = $nbt->getData();
 
@@ -79,9 +79,35 @@ class Schematic {
 			$this->entities = $data["Entities"];
 			$this->tileEntities = $data["TileEntities"];
 
-		}catch(\Throwable $e){ //zlib decode error / corrupt data
-			Server::getInstance()->getLogger()->error("Error decoding schematic: ".$e->getMessage());
+		} catch(\Throwable $e) { //zlib decode error / corrupt data
+			Server::getInstance()->getLogger()->error("Error decoding schematic: " . $e->getMessage());
 		}
+	}
+
+	public function getNBT() {
+		$nbt = new NBT(NBT::BIG_ENDIAN);
+		$nbt->readCompressed($this->raw);
+		return $nbt;
+	}
+
+	public static function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array {
+		$bytes = array_values(unpack("c*", $blocks));
+		$meta = array_values(unpack("c*", $meta));
+		$realBlocks = [];
+		for($x = 0; $x < $width; $x++) {
+			for($y = 0; $y < $height; $y++) {
+				for($z = 0; $z < $length; $z++) {
+					$index = ($y * $length + $z) * $width + $x;
+					$block = Block::get($bytes[$index]);
+					$block->setComponents($x, $y, $z);
+					if(isset($meta[$index])) {
+						$block->setDamage($meta[$index] & 0x0F);
+					}
+					$realBlocks[] = $block;
+				}
+			}
+		}
+		return $realBlocks;
 	}
 
 	/**
@@ -110,10 +136,31 @@ class Schematic {
 		$this->raw = $nbt->writeCompressed();
 	}
 
+	/**
+	 * @param Block[] $blocks
+	 *
+	 * @return array
+	 */
+	public static function encodeBlocks(array $blocks, int $height, int $width, int $length): array {
+		$meta = "";
+		$data = "";
+		for($x = 0; $x < $width; $x++) {
+			for($y = 0; $y < $height; $y++) {
+				for($z = 0; $z < $length; $z++) {
+					$index = ($y * $length + $z) * $width + $x;
+					$block = $blocks[$index];
+					$data .= pack("c", $block->getId());
+					$meta .= pack("c", $block->getDamage() & 0x0F);
+				}
+			}
+		}
+		return [$data, $meta];
+	}
+
 	public function fixBlockIds() {
-		$replace = null;
-		foreach ($this->blocks as $k => $block) {
-			switch ($block->getId()) {
+		foreach($this->blocks as $k => $block) {
+			$replace = null;
+			switch($block->getId()) {
 				case 126:
 					$replace = Block::get(Item::WOOD_SLAB);
 					break;
@@ -144,10 +191,10 @@ class Schematic {
 				default:
 					break;
 			}
-			if($replace !== null) {
+			if($replace) {
+				$replace->setComponents($block->x, $block->y, $block->z);
 				$this->blocks[$k] = $replace;
 			}
-			$replace = null;
 		}
 	}
 
@@ -183,12 +230,6 @@ class Schematic {
 		$this->tileEntities = $entities;
 	}
 
-	public function getNBT() {
-		$nbt = new NBT(NBT::BIG_ENDIAN);
-		$nbt->readCompressed($this->raw);
-		return $nbt;
-	}
-
 	public function getLength(): int {
 		return $this->length;
 	}
@@ -199,46 +240,6 @@ class Schematic {
 
 	public function getWidth(): int {
 		return $this->width;
-	}
-
-	public static function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array {
-		$bytes 	= array_values(unpack("c*", $blocks));
-		$meta 	= array_values(unpack("c*", $meta));
-		$realBlocks = [];
-		for ($x = 0; $x < $width; $x++) {
-			for ($y = 0; $y < $height; $y++) {
-				for ($z = 0; $z < $length; $z++) {
-					$index = ($y*$length + $z)*$width + $x;
-					$block = Block::get($bytes[$index]);
-					$block->setComponents($x, $y, $z);
-					if(isset($meta[$index])) {
-						$block->setDamage($meta[$index] & 0x0F);
-					}
-					$realBlocks[] = $block;
-				}
-			}
-		}
-		return $realBlocks;
-	}
-
-	/**
-	 * @param Block[] $blocks
-	 * @return array
-	 */
-	public static function encodeBlocks(array $blocks, int $height, int $width, int $length): array {
-		$meta = "";
-		$data = "";
-		for ($x = 0; $x < $width; $x++) {
-			for ($y = 0; $y < $height; $y++) {
-				for ($z = 0; $z < $length; $z++) {
-					$index = ($y*$length + $z)*$width + $x;
-					$block = $blocks[$index];
-					$data .= pack("c", $block->getId());
-					$meta .= pack("c", $block->getDamage() & 0x0F);
-				}
-			}
-		}
-		return [$data, $meta];
 	}
 
 }
