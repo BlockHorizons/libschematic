@@ -128,9 +128,7 @@ class Schematic {
 			new ShortTag("Length", $this->length),
 			new ShortTag("Width", $this->width),
 			new ShortTag("Height", $this->height),
-			new StringTag("Materials", self::MATERIALS_ALPHA),
-			$this->entities,
-			$this->tileEntities
+			new StringTag("Materials", self::MATERIALS_ALPHA)
 		]);
 		$nbt->setData($nbtCompound);
 		$this->raw = $nbt->writeCompressed();
