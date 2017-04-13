@@ -144,7 +144,7 @@ class Schematic {
 				default:
 					break;
 			}
-			if($replace) {
+			if($replace !== null) {
 				$this->blocks[$k] = $replace;
 			}
 			$replace = null;
