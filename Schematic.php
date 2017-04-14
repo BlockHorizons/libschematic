@@ -160,31 +160,31 @@ class Schematic {
 			$replace = null;
 			switch($block->getId()) {
 				case 126:
-					$replace = Block::get(Item::WOOD_SLAB, $block->getDamage());
+					$replace = Block::get(Block::WOOD_SLAB, $block->getDamage());
 					break;
 				case 95:
-					$replace = Block::get(Item::GLASS);
+					$replace = Block::get(Block::GLASS);
 					break;
 				case 160:
-					$replace = Block::get(Item::GLASS_PANE);
+					$replace = Block::get(Block::GLASS_PANE);
 					break;
 				case 125:
-					$replace = Block::get(Item::DOUBLE_WOODEN_SLAB, $block->getDamage());
+					$replace = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage());
 					break;
 				case 188:
-					$replace = Block::get(Item::FENCE, 1);
+					$replace = Block::get(Block::FENCE, 1);
 					break;
 				case 189:
-					$replace = Block::get(Item::FENCE, 2);
+					$replace = Block::get(Block::FENCE, 2);
 					break;
 				case 190:
-					$replace = Block::get(Item::FENCE, 3);
+					$replace = Block::get(Block::FENCE, 3);
 					break;
 				case 191:
-					$replace = Block::get(Item::FENCE, 5);
+					$replace = Block::get(Block::FENCE, 5);
 					break;
 				case 192:
-					$replace = Block::get(Item::FENCE, 4);
+					$replace = Block::get(Block::FENCE, 4);
 					break;
 				default:
 					break;
