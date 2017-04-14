@@ -114,11 +114,11 @@ class Schematic {
 	 * Class properties into NBT -> Raw
 	 */
 	public function encode() {
-		// Get real parameters from blocks
-		$lb = array_reverse($this->blocks)[0];
-		$this->height = $lb->y + 1;
-		$this->width = $lb->x + 1;
-		$this->length = $lb->z + 1;
+		// Get real parameters from last block in the array
+		$lb = array_reverse($this->blocks)[0] ?? null;
+		$this->height = $lb ? $lb->y + 1 : 0;
+		$this->width = $lb ? $lb->x + 1 : 0;
+		$this->length = $lb ? $lb->z + 1 : 0;
 		$eb = self::encodeBlocks($this->blocks, $this->height, $this->width, $this->length);
 
 		$nbt = new NBT(NBT::BIG_ENDIAN);
@@ -148,7 +148,7 @@ class Schematic {
 					$index = ($y * $length + $z) * $width + $x;
 					$block = $blocks[$index];
 					$data .= pack("c", $block->getId());
-					$meta .= pack("c", $block->getDamage() & 0x0F);
+					$meta .= pack("c", $block->getDamage() & 0x0F); // TODO: Check if this is right method to get lowest 4 bits
 				}
 			}
 		}
@@ -200,6 +200,11 @@ class Schematic {
 		return $this->blocks;
 	}
 
+	/**
+	 * Blocks must follow YXZ order or you will corrupt schematic file!
+	 *
+	 * @param Block[] $blocks
+	 */
 	public function setBlocks(array $blocks) {
 		$this->blocks = $blocks;
 	}
@@ -216,6 +221,9 @@ class Schematic {
 		return $this->entities;
 	}
 
+	/**
+	 * @param CompoundTag
+	 */
 	public function setEntities($entities) {
 		$this->entities;
 	}
@@ -224,6 +232,9 @@ class Schematic {
 		return $this->tileEntities;
 	}
 
+	/**
+	 * @param CompoundTag
+	 */
 	public function setTileEntities($entities) {
 		$this->tileEntities = $entities;
 	}
