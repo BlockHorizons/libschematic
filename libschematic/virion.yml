@@ -1,0 +1,5 @@
+name: "libschematic"
+author: "BlockHorizons"
+version: 0.0.1
+api: [3.0.0-ALPHA5, 3.0.0-ALPHA6]
+antigen: BlockHorizons\libschematic

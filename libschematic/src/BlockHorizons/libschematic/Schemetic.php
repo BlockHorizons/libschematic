@@ -1,5 +1,5 @@
 <?php
-namespace schematic;
+namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
 use pocketmine\item\Item;
@@ -33,7 +33,7 @@ class Schematic {
 	/**
 	 * Order YXZ:
 	 * Height    - Along Y axis
-	 * Width    - Along X axis
+	 * Width     - Along X axis
 	 * Length    - Along Z axis
 	 * @var int
 	 */
@@ -136,6 +136,9 @@ class Schematic {
 
 	/**
 	 * @param Block[] $blocks
+	 * @param int     $height
+	 * @param int     $width
+	 * @param int     $length
 	 *
 	 * @return array
 	 */
@@ -154,7 +157,10 @@ class Schematic {
 		}
 		return [$data, $meta];
 	}
-
+	
+	/**
+	 * Replaces blocks that are not currently available in PocketMine-MP.
+	 */
 	public function fixBlockIds() {
 		foreach($this->blocks as $k => $block) {
 			$replace = null;
@@ -195,7 +201,12 @@ class Schematic {
 			}
 		}
 	}
-
+	
+	/**
+	 * Returns all blocks in the schematic.
+	 *
+	 * @return array
+	 */
 	public function getBlocks(): array {
 		return $this->blocks;
 	}
@@ -216,7 +227,12 @@ class Schematic {
 	public function setMaterials(string $materials) {
 		$this->materials = $materials;
 	}
-
+	
+	/**
+	 * Returns all entities in the schematic.
+	 * 
+	 * @return CompoundTag
+	 */
 	public function getEntities() {
 		return $this->entities;
 	}
@@ -250,5 +266,4 @@ class Schematic {
 	public function getWidth(): int {
 		return $this->width;
 	}
-
 }

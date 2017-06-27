@@ -1,0 +1,7 @@
+---
+projects:
+  libschematic:
+    path: libschemetic/
+    type: library
+    model: virion
+...

@@ -1,7 +1,8 @@
-# Schematics-PHP
+# Schematic PHP
 
 # Implementing into plugins
-Best way to implement this code, is to add it as git submodule.
+Best way to implement this code, is to use it as a virion. 
+You can also add it as git submodule
 ```bash
 cd ~/PocketMine-MP/plugins/MyPlugin/src
 git submodule add -b master https://github.com/BlockHorizons/Schematics-PHP.git schematic
@@ -15,7 +16,7 @@ git submodule update
 ```php
 try {
   $fileContents = file_get_contents("castle.schematic");
-  $schematic = new \schematic\Schematic($fileContents);
+  $schematic = new \BlockHorizons\libschematic\Schematic($fileContents);
   $schematic->decode();
 } catch (\Throwable $error) {
   // Handle error
@@ -38,7 +39,7 @@ try {
 ```php
 $target = $player->getPosition();
 foreach($schematic->getBlocks() as $block) {
-  $target->level->setBlock($target->add($block), $block);
+	$target->level->setBlock($target->add($block), $block);
 }
 ```
 
