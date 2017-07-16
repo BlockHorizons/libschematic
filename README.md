@@ -1,6 +1,6 @@
 # Schematic PHP
 
-# Implementing into plugins
+### Implementing into plugins
 Best way to implement this code, is to use it as a virion. 
 You can also add it as git submodule
 ```bash
@@ -9,9 +9,9 @@ git submodule add -b master https://github.com/BlockHorizons/Schematics-PHP.git 
 git submodule update
 ```
 
-# Using 
+### Using 
 
-### Loading schematic file
+#### Loading schematic file
 
 ```php
 try {
@@ -23,7 +23,7 @@ try {
 }
 ```
 
-### Saving schematic file
+#### Saving schematic file
 
 ```php
 try {
@@ -34,7 +34,7 @@ try {
 }
 ```
 
-### Pasting
+#### Pasting
 
 ```php
 $target = $player->getPosition();
