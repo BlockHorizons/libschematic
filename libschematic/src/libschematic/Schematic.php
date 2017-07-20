@@ -81,6 +81,8 @@ class Schematic {
 
 	/**
 	 * Decodes the NBT data from the Schematic.
+	 *
+	 * @return $this
 	 */
 	public function decode() {
 		$data = $this->getNBT()->getData();
@@ -93,6 +95,7 @@ class Schematic {
 		$this->tileEntities = $data["TileEntities"];
 		
 		$this->blocks = $this->decodeBlocks($data["Blocks"], $data["Data"], $this->height, $this->width, $this->length);
+		return $this;
 	}
 
 	/**
