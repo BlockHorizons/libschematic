@@ -223,6 +223,15 @@ class Schematic {
 	}
 	
 	/**
+	 * Returns the file size of the Schematic file.
+	 *
+	 * @return int
+	 */
+	public function getSize(): int {
+		return filesize($this->file);
+	}
+	
+	/**
 	 * Returns all blocks in the schematic.
 	 *
 	 * @return array
