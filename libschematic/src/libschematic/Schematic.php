@@ -153,6 +153,7 @@ class Schematic {
 		]);
 		$nbt->setData($nbtCompound);
 		$this->raw = $nbt->writeCompressed();
+		return $this;
 	}
 
 	/**
