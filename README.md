@@ -1,13 +1,10 @@
 # libschematic
+A library for creating and manipulating MCEdit Schematic files.  
 
 ### Implementing into plugins
 Best way to implement this code, is to use it as a virion. 
-You can also add it as git submodule
-```bash
-cd ~/PocketMine-MP/plugins/MyPlugin/src
-git submodule add -b master https://github.com/BlockHorizons/Schematics-PHP.git schematic
-git submodule update
-```
+
+You will need the plugin [DeVirion](https://poggit.pmmp.io/p/DeVirion) to load the virion into your plugin.  
 
 ### Using 
 
@@ -15,11 +12,10 @@ git submodule update
 
 ```php
 try {
-  $fileContents = file_get_contents("castle.schematic");
-  $schematic = new \BlockHorizons\libschematic\Schematic($fileContents);
-  $schematic->decode();
+	$schematic = new \libschematic\Schematic("castle.schematic");
+	$schematic->decode();
 } catch (\Throwable $error) {
-  // Handle error
+	// Handle error
 }
 ```
 
@@ -27,10 +23,11 @@ try {
 
 ```php
 try {
-  $schematic->encode();
-  file_put_contents("castle.schematic", $schematic->raw);
+	$schematic->encode();
+	$schematic->save("castle.schematic"); // With custom name
+	$schematic->save(); // With the name you used before
 } catch (\Throwable $error) {
-  // Handle error
+	// Handle error
 }
 ```
 
@@ -43,4 +40,23 @@ foreach($schematic->getBlocks() as $block) {
 }
 ```
 
-__NOTE__: TO FIX BLOCK IDs YOU MUST CALL ```Schematic::fixBlockIds()```
+#### Fixing Block IDs
+If you have blocks not currently in PMMP/MCPE, you will need to call the following after loading a schematic:
+```php
+$schematic->fixBlockIds();
+```
+
+#### I'm a fluent person
+So am I!
+
+```php
+try {
+	new \libschematic\Schematic("castle.schematic")
+		->decode()
+		->setBlocks(...)
+		->setEntities(...)
+		->save();
+} catch (\Throwable $error) {
+	// Handle error
+}
+```
