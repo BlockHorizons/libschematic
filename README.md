@@ -1,4 +1,4 @@
-# Schematic PHP
+# libschematic
 
 ### Implementing into plugins
 Best way to implement this code, is to use it as a virion. 
