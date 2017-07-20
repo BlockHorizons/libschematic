@@ -58,12 +58,14 @@ class Schematic {
 	/**
 	 * @param string $file the path of the Schematic file
 	 */
-	public function __construct(string $file) {
-		$data = file_get_contents($file);
-		if(empty($data)) {
-			throw new \InvalidStateException("Failed to load Schematic data.");
+	public function __construct(string $file = "") {
+		if($file !== "") {
+			$data = file_get_contents($file);
+			if(empty($data)) {
+				throw new \InvalidStateException("Failed to load Schematic data.");
+			}
+			$this->file = $file;
 		}
-		$this->file = $file;
 	}
 	
 	/**
