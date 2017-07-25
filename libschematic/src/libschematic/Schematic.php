@@ -62,7 +62,7 @@ class Schematic {
 		if($file !== "") {
 			$data = file_get_contents($file);
 			if(empty($data)) {
-				throw new \InvalidStateException("Failed to load Schematic data.");
+				throw new \InvalidArgumentException("Failed to load Schematic data.");
 			}
 			$this->file = $file;
 		}
@@ -188,7 +188,7 @@ class Schematic {
 			$replace = null;
 			switch($block->getId()) {
 				case 126:
-					$replace = Block::get(Block::WOOD_SLAB, $block->getDamage());
+					$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
 					break;
 				case 95:
 					$replace = Block::get(Block::GLASS);
@@ -262,11 +262,16 @@ class Schematic {
 		return $this->materials;
 	}
 
+	/**
+	 * @param string $materials
+	 *
+	 * @return $this
+	 */
 	public function setMaterials(string $materials) {
 		$this->materials = $materials;
 		return $this;
 	}
-	
+
 	/**
 	 * Returns all entities in the schematic.
 	 * 
@@ -277,19 +282,26 @@ class Schematic {
 	}
 
 	/**
-	 * @param CompoundTag
+	 * @param $entities
+	 *
+	 * @return $this
 	 */
 	public function setEntities($entities) {
 		$this->entities = $entities;
 		return $this;
 	}
 
+	/**
+	 * @return CompoundTag
+	 */
 	public function getTileEntities() {
 		return $this->tileEntities;
 	}
 
 	/**
-	 * @param CompoundTag
+	 * @param $entities
+	 *
+	 * @return $this
 	 */
 	public function setTileEntities($entities) {
 		$this->tileEntities = $entities;
