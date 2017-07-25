@@ -64,6 +64,7 @@ class Schematic {
 			if(empty($data)) {
 				throw new \InvalidArgumentException("Failed to load Schematic data.");
 			}
+			$this->raw = $data;
 			$this->file = $file;
 		}
 	}
