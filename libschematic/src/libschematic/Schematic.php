@@ -38,7 +38,7 @@ class Schematic {
 	 * Length    - Along Z axis
 	 * @var int
 	 */
-	protected $height, $width, $length;
+	protected $height = 0, $width = 0, $length = 0;
 
 	/** @var Block[] */
 	protected $blocks = [];
@@ -172,9 +172,12 @@ class Schematic {
 			for($y = 0; $y < $height; $y++) {
 				for($z = 0; $z < $length; $z++) {
 					$index = ($y * $length + $z) * $width + $x;
+					if(!isset($blocks[$index])) {
+						continue;
+					}
 					$block = $blocks[$index];
 					$data .= pack("c", $block->getId());
-					$meta .= pack("c", $block->getDamage() & 0x0F); // TODO: Check if this is right method to get lowest 4 bits
+					$meta .= pack("c", $block->getDamage() & 0x0F);
 				}
 			}
 		}
@@ -328,5 +331,38 @@ class Schematic {
 	 */
 	public function getWidth(): int {
 		return $this->width;
+	}
+
+	/**
+	 * @param int $length
+	 *
+	 * @return $this
+	 */
+	public function setLength(int $length) {
+		$this->length = $length;
+
+		return $this;
+	}
+
+	/**
+	 * @param int $height
+	 *
+	 * @return $this
+	 */
+	public function setHeight(int $height) {
+		$this->height = $height;
+
+		return $this;
+	}
+
+	/**
+	 * @param int $width
+	 *
+	 * @return $this
+	 */
+	public function setWidth(int $width) {
+		$this->width = $width;
+
+		return $this;
 	}
 }
