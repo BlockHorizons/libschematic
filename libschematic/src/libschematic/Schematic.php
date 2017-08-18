@@ -3,15 +3,18 @@
 namespace libschematic;
 
 use pocketmine\block\Block;
-use pocketmine\item\Item;
 use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ShortTag;
 use pocketmine\nbt\tag\StringTag;
-use pocketmine\Server;
 
 class Schematic {
+
+	/**
+	 * For schematics exported from Minecraft Pocket Edition
+	 */
+	const MATERIALS_POCKET = "Pocket";
 
 	/**
 	 * For schematics exported from Minecraft Alpha and newer
@@ -150,7 +153,7 @@ class Schematic {
 			new ShortTag("Length", $this->length),
 			new ShortTag("Width", $this->width),
 			new ShortTag("Height", $this->height),
-			new StringTag("Materials", self::MATERIALS_ALPHA)
+			new StringTag("Materials", self::MATERIALS_POCKET)
 		]);
 		$nbt->setData($nbtCompound);
 		$this->raw = $nbt->writeCompressed();
@@ -187,18 +190,15 @@ class Schematic {
 	/**
 	 * Replaces blocks that are not currently available in PocketMine-MP.
 	 */
-	public function fixBlockIds() {
-		foreach($this->blocks as $id => $block) {
+	public function fixBlockIds(): self {
+		if($this->materials === self::MATERIALS_POCKET) {
+			return $this;
+		}
+		foreach($this->blocks as $key => $block) {
 			$replace = null;
 			switch($block->getId()) {
 				case 126:
 					$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
-					break;
-				case 95:
-					$replace = Block::get(Block::GLASS);
-					break;
-				case 160:
-					$replace = Block::get(Block::GLASS_PANE);
 					break;
 				case 125:
 					$replace = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage());
@@ -223,7 +223,7 @@ class Schematic {
 			}
 			if($replace) {
 				$replace->setComponents($block->x, $block->y, $block->z);
-				$this->blocks[$id] = $replace;
+				$this->blocks[$key] = $replace;
 			}
 		}
 		return $this;
@@ -364,5 +364,12 @@ class Schematic {
 		$this->width = $width;
 
 		return $this;
+	}
+
+	public function decodeSizes() {
+		$data = $this->getNBT()->getData();
+		$this->width = $data["Width"];
+		$this->height = $data["Height"];
+		$this->length = $data["Length"];
 	}
 }
