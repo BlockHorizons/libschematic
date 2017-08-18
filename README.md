@@ -4,7 +4,7 @@ A library for creating and manipulating MCEdit Schematic files.
 ### Implementing into plugins
 Best way to implement this code, is to use it as a virion. 
 
-You will need the plugin [DeVirion](https://poggit.pmmp.io/p/DeVirion) to load the virion into your plugin.  
+See [the Virion documentation](https://github.com/poggit/support/blob/master/virion.md) for how to include virions into your plugins.  
 
 ### Using 
 
