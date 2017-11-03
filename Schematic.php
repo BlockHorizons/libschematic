@@ -1,6 +1,6 @@
 <?php
 
-namespace libschematic;
+namespace Schematic;
 
 use pocketmine\block\Block;
 use pocketmine\nbt\NBT;
