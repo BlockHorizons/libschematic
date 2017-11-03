@@ -2,24 +2,22 @@
 A library for creating and manipulating MCEdit Schematic files.  
 
 ### Implementing into plugins
-Best way to implement this code, is to use it as a virion. 
+Best way to implement this code is to use it as a git module. 
 
-See [the Virion documentation](https://github.com/poggit/support/blob/master/virion.md) for how to include virions into your plugins.  
+### Usage
 
-### Using 
-
-#### Loading schematic file
+#### Loading schematic files
 
 ```php
 try {
-	$schematic = new \libschematic\Schematic("castle.schematic");
+	$schematic = new Schematic("castle.schematic");
 	$schematic->decode();
 } catch (\Throwable $error) {
 	// Handle error
 }
 ```
 
-#### Saving schematic file
+#### Saving schematic files
 
 ```php
 try {
@@ -31,7 +29,7 @@ try {
 }
 ```
 
-#### Pasting
+#### Pasting schematics
 
 ```php
 $target = $player->getPosition();
@@ -51,7 +49,7 @@ So am I!
 
 ```php
 try {
-	new \libschematic\Schematic("castle.schematic")
+	new Schematic("castle.schematic")
 		->decode()
 		->setBlocks(...)
 		->setEntities(...)
