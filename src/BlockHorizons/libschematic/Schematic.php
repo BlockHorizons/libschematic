@@ -1,6 +1,6 @@
 <?php
 
-namespace Schematic;
+namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
 use pocketmine\nbt\NBT;
@@ -123,7 +123,7 @@ class Schematic {
 			for($y = 0; $y < $height; $y++) {
 				for($z = 0; $z < $length; $z++) {
 					$index = ($y * $length + $z) * $width + $x;
-					$block = Block::get($bytes[$index]);
+					$block = Block::get($bytes[$index] & 0xFF);
 					$block->setComponents($x, $y, $z);
 					if(isset($meta[$index])) {
 						$block->setDamage($meta[$index] & 0x0F);
