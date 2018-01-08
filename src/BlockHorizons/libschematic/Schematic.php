@@ -3,13 +3,13 @@
 namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
-use pocketmine\nbt\NBT;
+use pocketmine\nbt\BigEndianNBTStream;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ShortTag;
 use pocketmine\nbt\tag\StringTag;
 
-class Schematic {
+class Schematic{
 
 	/**
 	 * For schematics exported from Minecraft Pocket Edition
@@ -54,31 +54,31 @@ class Schematic {
 
 	/** @var CompoundTag */
 	protected $tileEntities;
-	
+
 	/** @var string */
 	private $file;
 
 	/**
 	 * @param string $file the path of the Schematic file
 	 */
-	public function __construct(string $file = "") {
-		if($file !== "") {
+	public function __construct(string $file = ""){
+		if ($file !== ""){
 			$data = file_get_contents($file);
-			if(empty($data)) {
+			if (empty($data)){
 				throw new \InvalidArgumentException("Failed to load Schematic data.");
 			}
 			$this->raw = $data;
 			$this->file = $file;
 		}
 	}
-	
+
 	/**
 	 * Save the Schematic to disk.
 	 *
 	 * @param string $file the Schematic output file name
 	 */
-	public function save(string $file = "") {
-		if($file === "") {
+	public function save(string $file = ""){
+		if ($file === ""){
 			file_put_contents($this->file, $this->raw);
 			return;
 		}
@@ -90,7 +90,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function decode() {
+	public function decode(){
 		$data = $this->getNBT()->getData();
 
 		$this->width = $data["Width"];
@@ -99,7 +99,7 @@ class Schematic {
 		$this->materials = $data["Materials"];
 		$this->entities = $data["Entities"];
 		$this->tileEntities = $data["TileEntities"];
-		
+
 		$this->blocks = $this->decodeBlocks($data["Blocks"], $data["Data"], $this->height, $this->width, $this->length);
 		return $this;
 	}
@@ -107,25 +107,25 @@ class Schematic {
 	/**
 	 * Reads the compressed NBT data from the Schematic, to be decoded later.
 	 *
-	 * @return NBT
+	 * @return BigEndianNBTStream
 	 */
-	public function getNBT(): NBT {
-		$nbt = new NBT(NBT::BIG_ENDIAN);
+	public function getNBT(): BigEndianNBTStream{
+		$nbt = new BigEndianNBTStream();
 		$nbt->readCompressed($this->raw);
 		return $nbt;
 	}
 
-	public function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array {
+	public function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array{
 		$bytes = array_values(unpack("c*", $blocks));
 		$meta = array_values(unpack("c*", $meta));
 		$realBlocks = [];
-		for($x = 0; $x < $width; $x++) {
-			for($y = 0; $y < $height; $y++) {
-				for($z = 0; $z < $length; $z++) {
+		for ($x = 0; $x < $width; $x++){
+			for ($y = 0; $y < $height; $y++){
+				for ($z = 0; $z < $length; $z++){
 					$index = ($y * $length + $z) * $width + $x;
-					$block = Block::get($bytes[$index] & 0xFF);
+					$block = Block::get(($bytes[$index]??0) & 0xFF);
 					$block->setComponents($x, $y, $z);
-					if(isset($meta[$index])) {
+					if (isset($meta[$index])){
 						$block->setDamage($meta[$index] & 0x0F);
 					}
 					$realBlocks[] = $block;
@@ -138,15 +138,15 @@ class Schematic {
 	/**
 	 * Class properties into NBT -> Raw
 	 */
-	public function encode() {
+	public function encode(){
 		// Get real parameters from last block in the array
 		$lb = array_reverse($this->blocks)[0] ?? null;
-		$this->height = $lb ? $lb->y + 1 : 0;
-		$this->width = $lb ? $lb->x + 1 : 0;
-		$this->length = $lb ? $lb->z + 1 : 0;
+		$this->height = $lb ? $lb->y + 1 : $this->height;
+		$this->width = $lb ? $lb->x + 1 : $this->width;
+		$this->length = $lb ? $lb->z + 1 : $this->length;
 		$encodedBlocks = $this->encodeBlocks($this->blocks, $this->height, $this->width, $this->length);
 
-		$nbt = new NBT(NBT::BIG_ENDIAN);
+		$nbt = new BigEndianNBTStream;
 		$nbtCompound = new CompoundTag("Schematic", [
 			new ByteArrayTag("Blocks", $encodedBlocks[0]),
 			new ByteArrayTag("Data", $encodedBlocks[1]),
@@ -162,20 +162,20 @@ class Schematic {
 
 	/**
 	 * @param Block[] $blocks
-	 * @param int     $height
-	 * @param int     $width
-	 * @param int     $length
+	 * @param int $height
+	 * @param int $width
+	 * @param int $length
 	 *
 	 * @return array
 	 */
-	public function encodeBlocks(array $blocks, int $height, int $width, int $length): array {
+	public function encodeBlocks(array $blocks, int $height, int $width, int $length): array{
 		$meta = "";
 		$data = "";
-		for($x = 0; $x < $width; $x++) {
-			for($y = 0; $y < $height; $y++) {
-				for($z = 0; $z < $length; $z++) {
+		for ($x = 0; $x < $width; $x++){
+			for ($y = 0; $y < $height; $y++){
+				for ($z = 0; $z < $length; $z++){
 					$index = ($y * $length + $z) * $width + $x;
-					if(!isset($blocks[$index])) {
+					if (!isset($blocks[$index])){
 						continue;
 					}
 					$block = $blocks[$index];
@@ -186,17 +186,17 @@ class Schematic {
 		}
 		return [$data, $meta];
 	}
-	
+
 	/**
 	 * Replaces blocks that are not currently available in PocketMine-MP.
 	 */
-	public function fixBlockIds(): self {
-		if($this->materials === self::MATERIALS_POCKET) {
+	public function fixBlockIds(): self{
+		if ($this->materials === self::MATERIALS_POCKET){
 			return $this;
 		}
-		foreach($this->blocks as $key => $block) {
+		foreach ($this->blocks as $key => $block){
 			$replace = null;
-			switch($block->getId()) {
+			switch ($block->getId()){
 				case 126:
 					$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
 					break;
@@ -221,29 +221,29 @@ class Schematic {
 				default:
 					break;
 			}
-			if($replace) {
+			if ($replace){
 				$replace->setComponents($block->x, $block->y, $block->z);
 				$this->blocks[$key] = $replace;
 			}
 		}
 		return $this;
 	}
-	
+
 	/**
 	 * Returns the file size of the Schematic file.
 	 *
 	 * @return int
 	 */
-	public function getSize(): int {
+	public function getSize(): int{
 		return filesize($this->file);
 	}
-	
+
 	/**
 	 * Returns all blocks in the schematic.
 	 *
 	 * @return array
 	 */
-	public function getBlocks(): array {
+	public function getBlocks(): array{
 		return $this->blocks;
 	}
 
@@ -254,7 +254,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setBlocks(array $blocks) {
+	public function setBlocks(array $blocks){
 		$this->blocks = $blocks;
 		return $this;
 	}
@@ -262,7 +262,7 @@ class Schematic {
 	/**
 	 * @return string
 	 */
-	public function getMaterials(): string {
+	public function getMaterials(): string{
 		return $this->materials;
 	}
 
@@ -271,17 +271,17 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setMaterials(string $materials) {
+	public function setMaterials(string $materials){
 		$this->materials = $materials;
 		return $this;
 	}
 
 	/**
 	 * Returns all entities in the schematic.
-	 * 
+	 *
 	 * @return CompoundTag
 	 */
-	public function getEntities() {
+	public function getEntities(){
 		return $this->entities;
 	}
 
@@ -290,7 +290,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setEntities($entities) {
+	public function setEntities($entities){
 		$this->entities = $entities;
 		return $this;
 	}
@@ -298,7 +298,7 @@ class Schematic {
 	/**
 	 * @return CompoundTag
 	 */
-	public function getTileEntities() {
+	public function getTileEntities(){
 		return $this->tileEntities;
 	}
 
@@ -307,7 +307,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setTileEntities($entities) {
+	public function setTileEntities($entities){
 		$this->tileEntities = $entities;
 		return $this;
 	}
@@ -315,21 +315,21 @@ class Schematic {
 	/**
 	 * @return int
 	 */
-	public function getLength(): int {
+	public function getLength(): int{
 		return $this->length;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getHeight(): int {
+	public function getHeight(): int{
 		return $this->height;
 	}
-	
+
 	/**
 	 * @return int
 	 */
-	public function getWidth(): int {
+	public function getWidth(): int{
 		return $this->width;
 	}
 
@@ -338,7 +338,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setLength(int $length) {
+	public function setLength(int $length){
 		$this->length = $length;
 
 		return $this;
@@ -349,7 +349,7 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setHeight(int $height) {
+	public function setHeight(int $height){
 		$this->height = $height;
 
 		return $this;
@@ -360,13 +360,13 @@ class Schematic {
 	 *
 	 * @return $this
 	 */
-	public function setWidth(int $width) {
+	public function setWidth(int $width){
 		$this->width = $width;
 
 		return $this;
 	}
 
-	public function decodeSizes() {
+	public function decodeSizes(){
 		$data = $this->getNBT()->getData();
 		$this->width = $data["Width"];
 		$this->height = $data["Height"];
