@@ -1,6 +1,6 @@
 name: libschematic
-version: 0.0.0
+version: 1.0.0
 antigen: BlockHorizons\libschematic
-api: [3.0.0-ALPHA7,3.0.0-ALPHA8,3.0.0-ALPHA9,3.0.0-ALPHA10]
+api: [3.0.0-ALPHA10]
 php: [7.2]
 author: BlockHorizons
