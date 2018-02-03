@@ -4,6 +4,7 @@ namespace Schematic;
 
 use pocketmine\block\Block;
 use pocketmine\nbt\NBT;
+use pocketmine\nbt\BigEndianNBTStream;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ShortTag;
@@ -110,7 +111,7 @@ class Schematic {
 	 * @return NBT
 	 */
 	public function getNBT(): NBT {
-		$nbt = new NBT(NBT::BIG_ENDIAN);
+		$nbt = new BigEndianNBTStream();
 		$nbt->readCompressed($this->raw);
 		return $nbt;
 	}
