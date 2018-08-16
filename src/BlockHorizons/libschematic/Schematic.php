@@ -58,6 +58,9 @@ class Schematic{
 	/** @var string */
 	private $file;
 
+	/** @var CompoundTag */
+	private $compound;
+
 	/**
 	 * @param string $file the path of the Schematic file
 	 */
@@ -77,7 +80,7 @@ class Schematic{
 	 *
 	 * @param string $file the Schematic output file name
 	 */
-	public function save(string $file = ""){
+	public function save(string $file = ""): void{
 		if ($file === ""){
 			file_put_contents($this->file, $this->raw);
 			return;
@@ -90,29 +93,29 @@ class Schematic{
 	 *
 	 * @return $this
 	 */
-	public function decode(){
-		$data = $this->getNBT()->getData();
+	public function decode(): self{
+		$data = $this->getNBT();
 
-		$this->width = $data["Width"];
-		$this->height = $data["Height"];
-		$this->length = $data["Length"];
-		$this->materials = $data["Materials"];
-		$this->entities = $data["Entities"];
-		$this->tileEntities = $data["TileEntities"];
+		$this->decodeSizes();
+		$this->materials = $data->getString("Materials");
+		$this->entities = $data->getListTag("Entities");
+		$this->tileEntities = $data->getListTag("TileEntities");
 
-		$this->blocks = $this->decodeBlocks($data["Blocks"], $data["Data"], $this->height, $this->width, $this->length);
+		$this->blocks = $this->decodeBlocks($data->getByteArray("Blocks"), $data->getByteArray("Data"), $this->height, $this->width, $this->length);
 		return $this;
 	}
 
 	/**
 	 * Reads the compressed NBT data from the Schematic, to be decoded later.
 	 *
-	 * @return BigEndianNBTStream
+	 * @return CompoundTag
 	 */
-	public function getNBT(): BigEndianNBTStream{
-		$nbt = new BigEndianNBTStream();
-		$nbt->readCompressed($this->raw);
-		return $nbt;
+	public function getNBT(): CompoundTag{
+		if($this->compound === null){
+			$nbt = new BigEndianNBTStream();
+			$this->compound = $nbt->readCompressed($this->raw);
+		}
+		return $this->compound;
 	}
 
 	public function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array{
@@ -138,7 +141,7 @@ class Schematic{
 	/**
 	 * Class properties into NBT -> Raw
 	 */
-	public function encode(){
+	public function encode(): self{
 		// Get real parameters from last block in the array
 		$lb = array_reverse($this->blocks)[0] ?? null;
 		$this->height = $lb ? $lb->y + 1 : $this->height;
@@ -155,8 +158,7 @@ class Schematic{
 			new ShortTag("Height", $this->height),
 			new StringTag("Materials", self::MATERIALS_POCKET)
 		]);
-		$nbt->setData($nbtCompound);
-		$this->raw = $nbt->writeCompressed();
+		$this->raw = $nbt->writeCompressed($nbtCompound);
 		return $this;
 	}
 
@@ -188,7 +190,7 @@ class Schematic{
 	}
 
 	/**
-	 * Replaces blocks that are not currently available in PocketMine-MP.
+	 * Replaces blocks that have different block IDs in Pocket Edition than PC Edition.
 	 */
 	public function fixBlockIds(): self{
 		if ($this->materials === self::MATERIALS_POCKET){
@@ -367,9 +369,9 @@ class Schematic{
 	}
 
 	public function decodeSizes(){
-		$data = $this->getNBT()->getData();
-		$this->width = $data["Width"];
-		$this->height = $data["Height"];
-		$this->length = $data["Length"];
+		$data = $this->getNBT();
+		$this->width = $data->getShort("Width");
+		$this->height = $data->getShort("Height");
+		$this->length = $data->getShort("Length");
 	}
 }
