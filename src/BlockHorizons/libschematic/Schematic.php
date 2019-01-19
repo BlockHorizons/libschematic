@@ -83,9 +83,9 @@ class Schematic{
 
 		$this->materials = $nbt->getString("Materials");
 
-		$this->height = $nbt->getInt("Height");
-		$this->width = $nbt->getInt("Width");
-		$this->length = $nbt->getInt("Length");
+		$this->height = $nbt->getShort("Height");
+		$this->width = $nbt->getShort("Width");
+		$this->length = $nbt->getShort("Length");
 
 		$this->blocks = $nbt->getByteArray("Blocks");
 		$this->data = $nbt->getByteArray("Data");
