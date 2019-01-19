@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
+use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\BigEndianNbtSerializer;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
@@ -117,15 +119,18 @@ class Schematic{
 	/**
 	 * setBlocks sets the blocks of either a generator or an array to a schematic.
 	 *
+	 * @param $bb AxisAlignedBB
 	 * @param \Generator<Block>|Block[] $blocks
 	 */
-	public function setBlocks($blocks) : void{
-		$offset = null;
+	public function setBlocks(AxisAlignedBB $bb, $blocks) : void{
 		/** @var Block $block */
+		$offset = new Vector3((int) $bb->minX, (int) $bb->minY, (int) $bb->minZ);
+		$max = new Vector3((int) $bb->maxX, (int) $bb->maxY, (int) $bb->maxZ);
+
+		$this->width = $max->x - $offset->x;
+		$this->length = $max->z - $offset->z;
+		$this->height = $max->y - $offset->y;
 		foreach($blocks as $block){
-			if($offset === null){
-				$offset = $block->asVector3();
-			}
 			$pos = $block->subtract($offset);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
@@ -133,16 +138,6 @@ class Schematic{
 			}
 			$this->blocks[$index] = chr($block->getId());
 			$this->data[$index] = chr($block->getDamage());
-
-			if($pos->x >= $this->width){
-				$this->width = $pos->x + 1;
-			}
-			if($pos->y >= $this->height){
-				$this->height = $pos->y + 1;
-			}
-			if($pos->z >= $this->length){
-				$this->length = $pos->z + 1;
-			}
 		}
 	}
 
