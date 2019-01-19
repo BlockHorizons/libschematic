@@ -117,21 +117,62 @@ class Schematic{
 	}
 
 	/**
-	 * setBlocks sets the blocks of either a generator or an array to a schematic.
+	 * setBlocks sets a generator of blocks to a schematic, using a bounding box to calculate the size.
 	 *
 	 * @param $bb AxisAlignedBB
-	 * @param \Generator<Block>|Block[] $blocks
+	 * @param \Generator $blocks
 	 */
-	public function setBlocks(AxisAlignedBB $bb, $blocks) : void{
+	public function setBlocks(AxisAlignedBB $bb, \Generator $blocks) : void{
 		/** @var Block $block */
 		$offset = new Vector3((int) $bb->minX, (int) $bb->minY, (int) $bb->minZ);
 		$max = new Vector3((int) $bb->maxX, (int) $bb->maxY, (int) $bb->maxZ);
 
-		$this->width = $max->x - $offset->x;
-		$this->length = $max->z - $offset->z;
-		$this->height = $max->y - $offset->y;
+		$this->width = $max->x - $offset->x + 1;
+		$this->length = $max->z - $offset->z + 1;
+		$this->height = $max->y - $offset->y + 1;
+
 		foreach($blocks as $block){
 			$pos = $block->subtract($offset);
+			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
+			if(strlen($this->blocks) <= $index){
+				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
+			}
+			$this->blocks[$index] = chr($block->getId());
+			$this->data[$index] = chr($block->getDamage());
+		}
+	}
+
+	/**
+	 * setBlockArray sets a block array to a schematic. The bounds of the schematic are calculated manually.
+	 *
+	 * @param Block[] $blocks
+	 */
+	public function setBlockArray(array $blocks) : void {
+		$min = new Vector3();
+		$max = new Vector3();
+		foreach($blocks as $block){
+			if($block->x < $min->x){
+				$min->x = $block->x;
+			} elseif($block->x > $max->x){
+				$max->x = $block->x;
+			}
+			if($block->y < $min->y){
+				$min->y = $block->y;
+			} elseif($block->y > $max->y){
+				$max->y = $block->y;
+			}
+			if($block->z < $min->z){
+				$min->z = $block->z;
+			} elseif($block->z > $max->z){
+				$max->z = $block->z;
+			}
+		}
+		$this->height = $max->y - $min->y + 1;
+		$this->width = $max->x - $min->x + 1;
+		$this->length = $max->z - $min->z + 1;
+
+		foreach($blocks as $block){
+			$pos = $block->subtract($min);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
