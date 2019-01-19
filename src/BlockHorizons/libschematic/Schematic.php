@@ -1,38 +1,43 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
-use pocketmine\nbt\BigEndianNBTStream;
+use pocketmine\nbt\BigEndianNbtSerializer;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ShortTag;
 use pocketmine\nbt\tag\StringTag;
+use function chr;
+use function file_get_contents;
+use function file_put_contents;
+use function ord;
+use function str_repeat;
+use function strlen;
 
 class Schematic{
 
 	/**
 	 * For schematics exported from Minecraft Pocket Edition
 	 */
-	const MATERIALS_POCKET = "Pocket";
+	public const MATERIALS_POCKET = "Pocket";
 
 	/**
 	 * For schematics exported from Minecraft Alpha and newer
 	 */
-	const MATERIALS_ALPHA = "Alpha";
+	public const MATERIALS_ALPHA = "Alpha";
 
 	/**
 	 * For schematics exported from Minecraft Classic
 	 */
-	const MATERIALS_CLASSIC = "Classic";
+	public const MATERIALS_CLASSIC = "Classic";
 
 	/**
 	 * Fallback
 	 */
-	const MATERIALS_UNKNOWN = "Unknown";
-
-	/** @var string */
-	public $raw;
+	public const MATERIALS_UNKNOWN = "Unknown";
 
 	/**
 	 * Order YXZ:
@@ -43,228 +48,157 @@ class Schematic{
 	 */
 	protected $height = 0, $width = 0, $length = 0;
 
-	/** @var Block[] */
-	protected $blocks = [];
+	/** @var string */
+	protected $blocks = "";
+	/** @var string */
+	protected $data = "";
 
 	/** @var string */
 	protected $materials = self::MATERIALS_UNKNOWN;
 
-	/** @var CompoundTag */
-	protected $entities;
-
-	/** @var CompoundTag */
-	protected $tileEntities;
-
-	/** @var string */
-	private $file;
-
-	/** @var CompoundTag */
-	private $compound;
-
 	/**
-	 * @param string $file the path of the Schematic file
-	 */
-	public function __construct(string $file = ""){
-		if ($file !== ""){
-			$data = file_get_contents($file);
-			if (empty($data)){
-				throw new \InvalidArgumentException("Failed to load Schematic data.");
-			}
-			$this->raw = $data;
-			$this->file = $file;
-		}
-	}
-
-	/**
-	 * Save the Schematic to disk.
+	 * save saves a schematic to disk.
 	 *
 	 * @param string $file the Schematic output file name
 	 */
-	public function save(string $file = ""): void{
-		if ($file === ""){
-			file_put_contents($this->file, $this->raw);
-			return;
-		}
-		file_put_contents($file, $this->raw);
-	}
-
-	/**
-	 * Decodes the NBT data from the Schematic.
-	 *
-	 * @return $this
-	 */
-	public function decode(): self{
-		$data = $this->getNBT();
-
-		$this->decodeSizes();
-		$this->materials = $data->getString("Materials");
-		$this->entities = $data->getListTag("Entities");
-		$this->tileEntities = $data->getListTag("TileEntities");
-
-		$this->blocks = $this->decodeBlocks($data->getByteArray("Blocks"), $data->getByteArray("Data"), $this->height, $this->width, $this->length);
-		return $this;
-	}
-
-	/**
-	 * Reads the compressed NBT data from the Schematic, to be decoded later.
-	 *
-	 * @return CompoundTag
-	 */
-	public function getNBT(): CompoundTag{
-		if($this->compound === null){
-			$nbt = new BigEndianNBTStream();
-			$this->compound = $nbt->readCompressed($this->raw);
-		}
-		return $this->compound;
-	}
-
-	public function decodeBlocks(string $blocks, string $meta, int $height, int $width, int $length): array{
-		$bytes = array_values(unpack("c*", $blocks));
-		$meta = array_values(unpack("c*", $meta));
-		$realBlocks = [];
-		for ($x = 0; $x < $width; $x++){
-			for ($y = 0; $y < $height; $y++){
-				for ($z = 0; $z < $length; $z++){
-					$index = ($y * $length + $z) * $width + $x;
-					$block = Block::get(($bytes[$index]??0) & 0xFF);
-					$block->setComponents($x, $y, $z);
-					if (isset($meta[$index])){
-						$block->setDamage($meta[$index] & 0x0F);
-					}
-					$realBlocks[] = $block;
-				}
-			}
-		}
-		return $realBlocks;
-	}
-
-	/**
-	 * Class properties into NBT -> Raw
-	 */
-	public function encode(): self{
-		// Get real parameters from last block in the array
-		$lb = array_reverse($this->blocks)[0] ?? null;
-		$this->height = $lb ? $lb->y + 1 : $this->height;
-		$this->width = $lb ? $lb->x + 1 : $this->width;
-		$this->length = $lb ? $lb->z + 1 : $this->length;
-		$encodedBlocks = $this->encodeBlocks($this->blocks, $this->height, $this->width, $this->length);
-
-		$nbt = new BigEndianNBTStream;
-		$nbtCompound = new CompoundTag("Schematic", [
-			new ByteArrayTag("Blocks", $encodedBlocks[0]),
-			new ByteArrayTag("Data", $encodedBlocks[1]),
+	public function save(string $file) : void{
+		$nbt = new CompoundTag("Schematic", [
+			new ByteArrayTag("Blocks", $this->blocks),
+			new ByteArrayTag("Data", $this->data),
 			new ShortTag("Length", $this->length),
 			new ShortTag("Width", $this->width),
 			new ShortTag("Height", $this->height),
 			new StringTag("Materials", self::MATERIALS_POCKET)
 		]);
-		$this->raw = $nbt->writeCompressed($nbtCompound);
-		return $this;
+		file_put_contents($file, (new BigEndianNbtSerializer())->writeCompressed($nbt));
 	}
 
 	/**
-	 * @param Block[] $blocks
-	 * @param int $height
-	 * @param int $width
-	 * @param int $length
+	 * parse parses a schematic from the file passed.
 	 *
-	 * @return array
+	 * @param string $file
 	 */
-	public function encodeBlocks(array $blocks, int $height, int $width, int $length): array{
-		$meta = "";
-		$data = "";
-		for ($x = 0; $x < $width; $x++){
-			for ($y = 0; $y < $height; $y++){
-				for ($z = 0; $z < $length; $z++){
-					$index = ($y * $length + $z) * $width + $x;
-					if (!isset($blocks[$index])){
-						continue;
+	public function parse(string $file) : void{
+		$nbt = (new BigEndianNbtSerializer())->readCompressed(file_get_contents($file));
+
+		$this->materials = $nbt->getString("Materials");
+
+		$this->height = $nbt->getInt("Height");
+		$this->width = $nbt->getInt("Width");
+		$this->length = $nbt->getInt("Length");
+
+		$this->blocks = $nbt->getByteArray("Blocks");
+		$this->data = $nbt->getByteArray("Data");
+	}
+
+	/**
+	 * blocks returns a generator of blocks found in the schematic opened.
+	 *
+	 * @return \Generator
+	 */
+	public function blocks() : \Generator{
+		for($x = 0; $x < $this->width; $x++){
+			for($z = 0; $z < $this->length; $z++){
+				for($y = 0; $y < $this->height; $y++){
+					$index = $this->blockIndex($x, $y, $z);
+					$id = isset($this->blocks[$index]) ? ord($this->blocks[$index]) & 0xff : 0;
+					$data = isset($this->data[$index]) ? ord($this->data[$index]) & 0x0f : 0;
+					$block = Block::get($id, $data);
+					$block->setComponents($x, $y, $z);
+					if($this->materials !== self::MATERIALS_POCKET){
+						$block = $this->fixBlock($block);
 					}
-					$block = $blocks[$index];
-					$data .= pack("c", $block->getId());
-					$meta .= pack("c", $block->getDamage() & 0x0F);
+					yield $block;
 				}
 			}
 		}
-		return [$data, $meta];
 	}
 
 	/**
-	 * Replaces blocks that have different block IDs in Pocket Edition than PC Edition.
+	 * setBlocks sets the blocks of either a generator or an array to a schematic.
+	 *
+	 * @param \Generator<Block>|Block[] $blocks
 	 */
-	public function fixBlockIds(): self{
-		if ($this->materials === self::MATERIALS_POCKET){
-			return $this;
-		}
-		foreach ($this->blocks as $key => $block){
-			$replace = null;
-			switch ($block->getId()){
-				case 126:
-					$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
-					break;
-				case 125:
-					$replace = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage());
-					break;
-				case 188:
-					$replace = Block::get(Block::FENCE, 1);
-					break;
-				case 189:
-					$replace = Block::get(Block::FENCE, 2);
-					break;
-				case 190:
-					$replace = Block::get(Block::FENCE, 3);
-					break;
-				case 191:
-					$replace = Block::get(Block::FENCE, 5);
-					break;
-				case 192:
-					$replace = Block::get(Block::FENCE, 4);
-					break;
-				default:
-					break;
+	public function setBlocks($blocks) : void{
+		$offset = null;
+		/** @var Block $block */
+		foreach($blocks as $block){
+			if($offset === null){
+				$offset = $block->asVector3();
 			}
-			if ($replace){
-				$replace->setComponents($block->x, $block->y, $block->z);
-				$this->blocks[$key] = $replace;
+			$pos = $block->subtract($offset);
+			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
+			if(strlen($this->blocks) <= $index){
+				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
+			}
+			$this->blocks[$index] = chr($block->getId());
+			$this->data[$index] = chr($block->getDamage());
+
+			if($pos->x >= $this->width){
+				$this->width = $pos->x + 1;
+			}
+			if($pos->y >= $this->height){
+				$this->height = $pos->y + 1;
+			}
+			if($pos->z >= $this->length){
+				$this->length = $pos->z + 1;
 			}
 		}
-		return $this;
 	}
 
 	/**
-	 * Returns the file size of the Schematic file.
+	 * fixBlock replaces a block that has a different block ID in Pocket Edition than in PC Edition.
+	 *
+	 * @param $block Block
+	 *
+	 * @return Block
+	 */
+	protected function fixBlock(Block $block) : Block{
+		switch($block->getId()){
+			case 126:
+				$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
+				break;
+			case 125:
+				$replace = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage());
+				break;
+			case 188:
+				$replace = Block::get(Block::FENCE, 1);
+				break;
+			case 189:
+				$replace = Block::get(Block::FENCE, 2);
+				break;
+			case 190:
+				$replace = Block::get(Block::FENCE, 3);
+				break;
+			case 191:
+				$replace = Block::get(Block::FENCE, 5);
+				break;
+			case 192:
+				$replace = Block::get(Block::FENCE, 4);
+				break;
+			default:
+				return $block;
+		}
+		$replace->setComponents($block->x, $block->y, $block->z);
+
+		return $block;
+	}
+
+	/**
+	 * @param int $x
+	 * @param int $y
+	 * @param int $z
 	 *
 	 * @return int
 	 */
-	public function getSize(): int{
-		return filesize($this->file);
-	}
-
-	/**
-	 * Returns all blocks in the schematic.
-	 *
-	 * @return array
-	 */
-	public function getBlocks(): array{
-		return $this->blocks;
-	}
-
-	/**
-	 * NOTE: Blocks must follow YXZ order or you will corrupt the schematic file.
-	 *
-	 * @param Block[] $blocks
-	 *
-	 * @return $this
-	 */
-	public function setBlocks(array $blocks){
-		$this->blocks = $blocks;
-		return $this;
+	protected function blockIndex(int $x, int $y, int $z) : int{
+		return ($y * $this->length + $z) * $this->width + $x;
 	}
 
 	/**
 	 * @return string
 	 */
-	public function getMaterials(): string{
+	public function getMaterials() : string{
 		return $this->materials;
 	}
 
@@ -275,63 +209,28 @@ class Schematic{
 	 */
 	public function setMaterials(string $materials){
 		$this->materials = $materials;
-		return $this;
-	}
 
-	/**
-	 * Returns all entities in the schematic.
-	 *
-	 * @return CompoundTag
-	 */
-	public function getEntities(){
-		return $this->entities;
-	}
-
-	/**
-	 * @param $entities
-	 *
-	 * @return $this
-	 */
-	public function setEntities($entities){
-		$this->entities = $entities;
-		return $this;
-	}
-
-	/**
-	 * @return CompoundTag
-	 */
-	public function getTileEntities(){
-		return $this->tileEntities;
-	}
-
-	/**
-	 * @param $entities
-	 *
-	 * @return $this
-	 */
-	public function setTileEntities($entities){
-		$this->tileEntities = $entities;
 		return $this;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getLength(): int{
+	public function getLength() : int{
 		return $this->length;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getHeight(): int{
+	public function getHeight() : int{
 		return $this->height;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getWidth(): int{
+	public function getWidth() : int{
 		return $this->width;
 	}
 
@@ -366,12 +265,5 @@ class Schematic{
 		$this->width = $width;
 
 		return $this;
-	}
-
-	public function decodeSizes(){
-		$data = $this->getNBT();
-		$this->width = $data->getShort("Width");
-		$this->height = $data->getShort("Height");
-		$this->length = $data->getShort("Length");
 	}
 }
