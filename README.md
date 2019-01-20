@@ -2,7 +2,7 @@
 A library for creating and manipulating MCEdit Schematic files.  
 
 ### Implementing into plugins
-Best way to implement this code is to use it as a git module. 
+Best way to implement this code is to use it as a git module or Poggit virion. 
 
 ### Usage
 
@@ -11,19 +11,32 @@ Best way to implement this code is to use it as a git module.
 ```php
 try {
 	$schematic = new Schematic("castle.schematic");
-	$schematic->decode();
+	$schematic->parse("castle.schematic");
 } catch (\Throwable $error) {
 	// Handle error
 }
+```
+
+#### Filling schematics
+```php
+$schematic = new Schematic();
+$boundingBox = new AxisAlignedBB();
+
+// For generator block providers, a bounding box is required as the size is unknown in advance.
+$schematic->setBlocks($boundingBox, $blockGenerator);
+
+$blocks = [];
+
+// For array block providers, the bounding box is calculated automatically.
+$schematic->setBlockArray($blocks);
 ```
 
 #### Saving schematic files
 
 ```php
 try {
-	$schematic->encode();
-	$schematic->save("castle.schematic"); // With custom name
-	$schematic->save(); // With the name you used before
+    $schematic = new Schematic();
+	$schematic->save("castle.schematic");
 } catch (\Throwable $error) {
 	// Handle error
 }
@@ -33,28 +46,10 @@ try {
 
 ```php
 $target = $player->getPosition();
-foreach($schematic->getBlocks() as $block) {
+foreach($schematic->blocks() as $block) {
 	$target->level->setBlock($target->add($block), $block);
 }
 ```
 
-#### Fixing Block IDs
-If you have blocks not currently in PMMP/MCPE, you will need to call the following after loading a schematic:
-```php
-$schematic->fixBlockIds();
-```
 
-#### I'm a fluent person
-So am I!
 
-```php
-try {
-	new Schematic("castle.schematic")
-		->decode()
-		->setBlocks(...)
-		->setEntities(...)
-		->save();
-} catch (\Throwable $error) {
-	// Handle error
-}
-```
