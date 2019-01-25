@@ -191,33 +191,25 @@ class Schematic{
 	 */
 	protected function fixBlock(Block $block) : Block{
 		switch($block->getId()){
+			case 95:
+				return Block::get(Block::STAINED_GLASS, $block->getDamage(), $block);
 			case 126:
-				$replace = Block::get(Block::WOODEN_SLAB, $block->getDamage());
-				break;
+				return Block::get(Block::WOODEN_SLAB, $block->getDamage(), $block);
 			case 125:
-				$replace = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage());
-				break;
+				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage(), $block);
 			case 188:
-				$replace = Block::get(Block::FENCE, 1);
-				break;
+				return Block::get(Block::FENCE, 1, $block);
 			case 189:
-				$replace = Block::get(Block::FENCE, 2);
-				break;
+				return Block::get(Block::FENCE, 2, $block);
 			case 190:
-				$replace = Block::get(Block::FENCE, 3);
-				break;
+				return Block::get(Block::FENCE, 3, $block);
 			case 191:
-				$replace = Block::get(Block::FENCE, 5);
-				break;
+				return Block::get(Block::FENCE, 5, $block);
 			case 192:
-				$replace = Block::get(Block::FENCE, 4);
-				break;
+				return Block::get(Block::FENCE, 4, $block);
 			default:
 				return $block;
 		}
-		$replace->setComponents($block->x, $block->y, $block->z);
-
-		return $block;
 	}
 
 	/**
