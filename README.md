@@ -10,7 +10,7 @@ Best way to implement this code is to use it as a git module or Poggit virion.
 
 ```php
 try {
-	$schematic = new Schematic("castle.schematic");
+	$schematic = new Schematic();
 	$schematic->parse("castle.schematic");
 } catch (\Throwable $error) {
 	// Handle error
