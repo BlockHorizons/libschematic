@@ -138,7 +138,7 @@ class Schematic{
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
 			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getDamage());
+			$this->data[$index] = chr($block->getMeta());
 		}
 	}
 
@@ -178,7 +178,7 @@ class Schematic{
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
 			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getDamage());
+			$this->data[$index] = chr($block->getMeta());
 		}
 	}
 
@@ -192,11 +192,11 @@ class Schematic{
 	protected function fixBlock(Block $block) : Block{
 		switch($block->getId()){
 			case 95:
-				return Block::get(Block::STAINED_GLASS, $block->getDamage(), $block);
+				return Block::get(Block::STAINED_GLASS, $block->getMeta(), $block);
 			case 126:
-				return Block::get(Block::WOODEN_SLAB, $block->getDamage(), $block);
+				return Block::get(Block::WOODEN_SLAB, $block->getMeta(), $block);
 			case 125:
-				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage(), $block);
+				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getMeta(), $block);
 			case 188:
 				return Block::get(Block::FENCE, 1, $block);
 			case 189:
