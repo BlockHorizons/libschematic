@@ -7,7 +7,7 @@ namespace BlockHorizons\libschematic;
 use pocketmine\block\Block;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\BigEndianNbtSerializer;
+use pocketmine\nbt\BigEndianNBTStream;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\ShortTag;
@@ -72,7 +72,7 @@ class Schematic{
 			new ShortTag("Height", $this->height),
 			new StringTag("Materials", self::MATERIALS_POCKET)
 		]);
-		file_put_contents($file, (new BigEndianNbtSerializer())->writeCompressed($nbt));
+		file_put_contents($file, (new BigEndianNBTStream())->writeCompressed($nbt));
 	}
 
 	/**
@@ -81,7 +81,11 @@ class Schematic{
 	 * @param string $file
 	 */
 	public function parse(string $file) : void{
-		$nbt = (new BigEndianNbtSerializer())->readCompressed(file_get_contents($file));
+		$nbt = (new BigEndianNBTStream())->readCompressed(file_get_contents($file));
+
+		if(!$nbt instanceof CompoundTag){
+			throw new \RuntimeException("Could not parse the schematic.");
+		}
 
 		$this->materials = $nbt->getString("Materials");
 
@@ -138,7 +142,7 @@ class Schematic{
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
 			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getMeta());
+			$this->data[$index] = chr($block->getDamage());
 		}
 	}
 
@@ -178,7 +182,7 @@ class Schematic{
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
 			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getMeta());
+			$this->data[$index] = chr($block->getDamage());
 		}
 	}
 
@@ -192,11 +196,11 @@ class Schematic{
 	protected function fixBlock(Block $block) : Block{
 		switch($block->getId()){
 			case 95:
-				return Block::get(Block::STAINED_GLASS, $block->getMeta(), $block);
+				return Block::get(Block::STAINED_GLASS, $block->getDamage(), $block);
 			case 126:
-				return Block::get(Block::WOODEN_SLAB, $block->getMeta(), $block);
+				return Block::get(Block::WOODEN_SLAB, $block->getDamage(), $block);
 			case 125:
-				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getMeta(), $block);
+				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getDamage(), $block);
 			case 188:
 				return Block::get(Block::FENCE, 1, $block);
 			case 189:
