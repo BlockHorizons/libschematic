@@ -190,26 +190,38 @@ class Schematic{
 	 * @return Block
 	 */
 	protected function fixBlock(Block $block) : Block{
+		/** @var Block $new */
+		$new = null;
 		switch($block->getId()){
 			case 95:
-				return Block::get(Block::STAINED_GLASS, $block->getMeta(), $block);
+				$new = Block::get(Block::STAINED_GLASS, $block->getMeta());
+				break;
 			case 126:
-				return Block::get(Block::WOODEN_SLAB, $block->getMeta(), $block);
+				$new = Block::get(Block::WOODEN_SLAB, $block->getMeta());
+				break;
 			case 125:
-				return Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getMeta(), $block);
+				$new = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getMeta());
+				break;
 			case 188:
-				return Block::get(Block::FENCE, 1, $block);
+				$new = Block::get(Block::FENCE, 1);
+				break;
 			case 189:
-				return Block::get(Block::FENCE, 2, $block);
+				$new = Block::get(Block::FENCE, 2);
+				break;
 			case 190:
-				return Block::get(Block::FENCE, 3, $block);
+				$new = Block::get(Block::FENCE, 3);
+				break;
 			case 191:
-				return Block::get(Block::FENCE, 5, $block);
+				$new = Block::get(Block::FENCE, 5);
+				break;
 			case 192:
-				return Block::get(Block::FENCE, 4, $block);
+				$new = Block::get(Block::FENCE, 4);
+				break;
 			default:
 				return $block;
 		}
+		$new->setComponents($block->x, $block->y, $block->z);
+		return $new;
 	}
 
 	/**
