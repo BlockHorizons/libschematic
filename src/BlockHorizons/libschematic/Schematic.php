@@ -8,10 +8,9 @@ use pocketmine\block\Block;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\BigEndianNbtSerializer;
-use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\ShortTag;
-use pocketmine\nbt\tag\StringTag;
+use pocketmine\nbt\TreeRoot;
+
 use function chr;
 use function file_get_contents;
 use function file_put_contents;
@@ -64,14 +63,15 @@ class Schematic{
 	 * @param string $file the Schematic output file name
 	 */
 	public function save(string $file) : void{
-		$nbt = new CompoundTag("Schematic", [
-			new ByteArrayTag("Blocks", $this->blocks),
-			new ByteArrayTag("Data", $this->data),
-			new ShortTag("Length", $this->length),
-			new ShortTag("Width", $this->width),
-			new ShortTag("Height", $this->height),
-			new StringTag("Materials", self::MATERIALS_POCKET)
-		]);
+		$nbt = new TreeRoot(
+			CompoundTag::create()
+				->setByteArray("Blocks", $this->blocks)
+				->setByteArray("Data", $this->data)
+				->setShort("Length", $this->length)
+				->setShort("Width", $this->width)
+				->setShort("Height", $this->height)
+				->setString("Materials", self::MATERIALS_POCKET)
+		);
 		file_put_contents($file, (new BigEndianNbtSerializer())->writeCompressed($nbt));
 	}
 
@@ -82,6 +82,7 @@ class Schematic{
 	 */
 	public function parse(string $file) : void{
 		$nbt = (new BigEndianNbtSerializer())->readCompressed(file_get_contents($file));
+		$nbt = $nbt->getTag();
 
 		$this->materials = $nbt->getString("Materials");
 
