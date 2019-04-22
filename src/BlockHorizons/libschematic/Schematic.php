@@ -10,7 +10,6 @@ use pocketmine\math\Vector3;
 use pocketmine\nbt\BigEndianNbtSerializer;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\TreeRoot;
-
 use function chr;
 use function file_get_contents;
 use function file_put_contents;
@@ -120,7 +119,7 @@ class Schematic{
 	/**
 	 * setBlocks sets a generator of blocks to a schematic, using a bounding box to calculate the size.
 	 *
-	 * @param $bb AxisAlignedBB
+	 * @param            $bb AxisAlignedBB
 	 * @param \Generator $blocks
 	 */
 	public function setBlocks(AxisAlignedBB $bb, \Generator $blocks) : void{
@@ -148,23 +147,23 @@ class Schematic{
 	 *
 	 * @param Block[] $blocks
 	 */
-	public function setBlockArray(array $blocks) : void {
+	public function setBlockArray(array $blocks) : void{
 		$min = new Vector3();
 		$max = new Vector3();
 		foreach($blocks as $block){
 			if($block->x < $min->x){
 				$min->x = $block->x;
-			} elseif($block->x > $max->x){
+			}elseif($block->x > $max->x){
 				$max->x = $block->x;
 			}
 			if($block->y < $min->y){
 				$min->y = $block->y;
-			} elseif($block->y > $max->y){
+			}elseif($block->y > $max->y){
 				$max->y = $block->y;
 			}
 			if($block->z < $min->z){
 				$min->z = $block->z;
-			} elseif($block->z > $max->z){
+			}elseif($block->z > $max->z){
 				$max->z = $block->z;
 			}
 		}
@@ -222,6 +221,7 @@ class Schematic{
 				return $block;
 		}
 		$new->setComponents($block->x, $block->y, $block->z);
+
 		return $new;
 	}
 
