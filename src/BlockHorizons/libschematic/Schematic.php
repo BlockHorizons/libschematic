@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
+use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\BigEndianNbtSerializer;
@@ -105,7 +107,7 @@ class Schematic{
 					$index = $this->blockIndex($x, $y, $z);
 					$id = isset($this->blocks[$index]) ? ord($this->blocks[$index]) & 0xff : 0;
 					$data = isset($this->data[$index]) ? ord($this->data[$index]) & 0x0f : 0;
-					$block = Block::get($id, $data);
+					$block = BlockFactory::get($id, $data);
 					$block->setComponents($x, $y, $z);
 					if($this->materials !== self::MATERIALS_POCKET){
 						$block = $this->fixBlock($block);
@@ -194,28 +196,28 @@ class Schematic{
 		$new = null;
 		switch($block->getId()){
 			case 95:
-				$new = Block::get(Block::STAINED_GLASS, $block->getMeta());
+				$new = BlockFactory::get(BlockLegacyIds::STAINED_GLASS, $block->getMeta());
 				break;
 			case 126:
-				$new = Block::get(Block::WOODEN_SLAB, $block->getMeta());
+				$new = BlockFactory::get(BlockLegacyIds::WOODEN_SLAB, $block->getMeta());
 				break;
 			case 125:
-				$new = Block::get(Block::DOUBLE_WOODEN_SLAB, $block->getMeta());
+				$new = BlockFactory::get(BlockLegacyIds::DOUBLE_WOODEN_SLAB, $block->getMeta());
 				break;
 			case 188:
-				$new = Block::get(Block::FENCE, 1);
+				$new = BlockFactory::get(BlockLegacyIds::FENCE, 1);
 				break;
 			case 189:
-				$new = Block::get(Block::FENCE, 2);
+				$new = BlockFactory::get(BlockLegacyIds::FENCE, 2);
 				break;
 			case 190:
-				$new = Block::get(Block::FENCE, 3);
+				$new = BlockFactory::get(BlockLegacyIds::FENCE, 3);
 				break;
 			case 191:
-				$new = Block::get(Block::FENCE, 5);
+				$new = BlockFactory::get(BlockLegacyIds::FENCE, 5);
 				break;
 			case 192:
-				$new = Block::get(Block::FENCE, 4);
+				$new = BlockFactory::get(BlockLegacyIds::FENCE, 4);
 				break;
 			default:
 				return $block;
