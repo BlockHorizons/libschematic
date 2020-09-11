@@ -18,6 +18,10 @@ use function file_put_contents;
 use function ord;
 use function str_repeat;
 use function strlen;
+use function zlib_decode;
+use function zlib_encode;
+
+use const ZLIB_ENCODING_GZIP;
 
 class Schematic{
 
@@ -73,7 +77,8 @@ class Schematic{
 				->setShort("Height", $this->height)
 				->setString("Materials", self::MATERIALS_POCKET)
 		);
-		file_put_contents($file, (new BigEndianNbtSerializer())->writeCompressed($nbt));
+		//NOTE: Save after encoding with zlib_encode for backward compatibility.
+		file_put_contents($file, zlib_encode((new BigEndianNbtSerializer())->write($nbt), ZLIB_ENCODING_GZIP));
 	}
 
 	/**
@@ -82,7 +87,7 @@ class Schematic{
 	 * @param string $file
 	 */
 	public function parse(string $file) : void{
-		$nbt = (new BigEndianNbtSerializer())->readCompressed(file_get_contents($file));
+		$nbt = (new BigEndianNbtSerializer())->read(zlib_decode(file_get_contents($file)));
 		$nbt = $nbt->getTag();
 
 		$this->materials = $nbt->getString("Materials");
@@ -107,8 +112,8 @@ class Schematic{
 					$index = $this->blockIndex($x, $y, $z);
 					$id = isset($this->blocks[$index]) ? ord($this->blocks[$index]) & 0xff : 0;
 					$data = isset($this->data[$index]) ? ord($this->data[$index]) & 0x0f : 0;
-					$block = BlockFactory::get($id, $data);
-					$block->setComponents($x, $y, $z);
+					$block = BlockFactory::getInstance()->get($id, $data);
+					[$block->getPos()->x, $block->getPos()->y, $block->getPos()->z] = [$x, $y, $z];
 					if($this->materials !== self::MATERIALS_POCKET){
 						$block = $this->fixBlock($block);
 					}
@@ -134,7 +139,7 @@ class Schematic{
 		$this->height = $max->y - $offset->y + 1;
 
 		foreach($blocks as $block){
-			$pos = $block->subtract($offset);
+			$pos = $block->getPos()->subtractVector($offset);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
@@ -150,23 +155,23 @@ class Schematic{
 	 * @param Block[] $blocks
 	 */
 	public function setBlockArray(array $blocks) : void{
-		$min = new Vector3();
-		$max = new Vector3();
+		$min = new Vector3(0, 0, 0);
+		$max = new Vector3(0, 0, 0);
 		foreach($blocks as $block){
-			if($block->x < $min->x){
-				$min->x = $block->x;
-			}elseif($block->x > $max->x){
-				$max->x = $block->x;
+			if($block->getPos()->x < $min->x){
+				$min->x = $block->getPos()->x;
+			}elseif($block->getPos()->x > $max->x){
+				$max->x = $block->getPos()->x;
 			}
-			if($block->y < $min->y){
-				$min->y = $block->y;
-			}elseif($block->y > $max->y){
-				$max->y = $block->y;
+			if($block->getPos()->y < $min->y){
+				$min->y = $block->getPos()->y;
+			}elseif($block->getPos()->y > $max->y){
+				$max->y = $block->getPos()->y;
 			}
-			if($block->z < $min->z){
-				$min->z = $block->z;
-			}elseif($block->z > $max->z){
-				$max->z = $block->z;
+			if($block->getPos()->z < $min->z){
+				$min->z = $block->getPos()->z;
+			}elseif($block->getPos()->z > $max->z){
+				$max->z = $block->getPos()->z;
 			}
 		}
 		$this->height = $max->y - $min->y + 1;
@@ -174,7 +179,7 @@ class Schematic{
 		$this->length = $max->z - $min->z + 1;
 
 		foreach($blocks as $block){
-			$pos = $block->subtract($min);
+			$pos = $block->getPos()->subtractVector($min);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
@@ -196,33 +201,34 @@ class Schematic{
 		$new = null;
 		switch($block->getId()){
 			case 95:
-				$new = BlockFactory::get(BlockLegacyIds::STAINED_GLASS, $block->getMeta());
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::STAINED_GLASS, $block->getMeta());
 				break;
 			case 126:
-				$new = BlockFactory::get(BlockLegacyIds::WOODEN_SLAB, $block->getMeta());
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::WOODEN_SLAB, $block->getMeta());
 				break;
 			case 125:
-				$new = BlockFactory::get(BlockLegacyIds::DOUBLE_WOODEN_SLAB, $block->getMeta());
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::DOUBLE_WOODEN_SLAB, $block->getMeta());
 				break;
 			case 188:
-				$new = BlockFactory::get(BlockLegacyIds::FENCE, 1);
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 1);
 				break;
 			case 189:
-				$new = BlockFactory::get(BlockLegacyIds::FENCE, 2);
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 2);
 				break;
 			case 190:
-				$new = BlockFactory::get(BlockLegacyIds::FENCE, 3);
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 3);
 				break;
 			case 191:
-				$new = BlockFactory::get(BlockLegacyIds::FENCE, 5);
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 5);
 				break;
 			case 192:
-				$new = BlockFactory::get(BlockLegacyIds::FENCE, 4);
+				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 4);
 				break;
 			default:
 				return $block;
 		}
-		$new->setComponents($block->x, $block->y, $block->z);
+		//$new->setComponents($block->x, $block->y, $block->z);
+		[$new->getPos()->x, $new->getPos()->y, $new->getPos()->z] = [$block->getPos()->x, $block->getPos()->y, $block->getPos()->z];
 
 		return $new;
 	}
