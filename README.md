@@ -47,7 +47,7 @@ try {
 ```php
 $target = $player->getPosition();
 foreach($schematic->blocks() as $block) {
-	$target->level->setBlock($target->add($block), $block);
+	$target->getWorld()->setBlock($target->addVector($block->getPosition()), $block);
 }
 ```
 
