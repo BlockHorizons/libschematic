@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace BlockHorizons\libschematic;
 
 use pocketmine\block\Block;
-use pocketmine\block\BlockFactory;
-use pocketmine\block\BlockLegacyIds;
+use pocketmine\block\RuntimeBlockStateRegistry;
+use pocketmine\data\bedrock\block\BlockStateData;
+use pocketmine\data\bedrock\block\BlockStateDeserializeException;
+use pocketmine\data\bedrock\block\BlockStateSerializeException;
+use pocketmine\data\bedrock\block\upgrade\LegacyBlockIdToStringIdMap;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\BigEndianNbtSerializer;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\TreeRoot;
+use pocketmine\utils\Utils;
+use pocketmine\world\format\io\GlobalBlockStateHandlers;
 use function chr;
 use function file_get_contents;
 use function file_put_contents;
+use function ksort;
 use function ord;
+use function serialize;
 use function str_repeat;
 use function strlen;
 use function zlib_decode;
@@ -24,6 +31,14 @@ use function zlib_encode;
 use const ZLIB_ENCODING_GZIP;
 
 class Schematic{
+
+	/** @var array<int, array{int, int}> */
+	private static array $stateIdToLegacyCache = [];
+
+	/** @var array<string, array{int, int}> */
+	private static array $stateKeyToLegacy = [];
+
+	private static bool $legacyReverseMapLoaded = false;
 
 	/**
 	 * For schematics exported from Minecraft Pocket Edition
@@ -87,8 +102,8 @@ class Schematic{
 	 * @param string $file
 	 */
 	public function parse(string $file) : void{
-		$nbt = (new BigEndianNbtSerializer())->read(zlib_decode(file_get_contents($file)));
-		$nbt = $nbt->getTag();
+		$tree = (new BigEndianNbtSerializer())->read(zlib_decode(file_get_contents($file)));
+		$nbt = $tree->mustGetCompoundTag();
 
 		$this->materials = $nbt->getString("Materials");
 
@@ -106,17 +121,28 @@ class Schematic{
 	 * @return \Generator
 	 */
 	public function blocks() : \Generator{
+		$stateRegistry = RuntimeBlockStateRegistry::getInstance();
+		$blockStateUpgrader = GlobalBlockStateHandlers::getUpgrader();
+		$deserializer = GlobalBlockStateHandlers::getDeserializer();
+		$unknownStateId = $deserializer->deserialize(GlobalBlockStateHandlers::getUnknownBlockStateData());
+
 		for($x = 0; $x < $this->width; $x++){
 			for($z = 0; $z < $this->length; $z++){
 				for($y = 0; $y < $this->height; $y++){
 					$index = $this->blockIndex($x, $y, $z);
 					$id = isset($this->blocks[$index]) ? ord($this->blocks[$index]) & 0xff : 0;
 					$data = isset($this->data[$index]) ? ord($this->data[$index]) & 0x0f : 0;
-					$block = BlockFactory::getInstance()->get($id, $data);
-					[$block->getPos()->x, $block->getPos()->y, $block->getPos()->z] = [$x, $y, $z];
-					if($this->materials !== self::MATERIALS_POCKET){
-						$block = $this->fixBlock($block);
+					try{
+						$blockStateId = $deserializer->deserialize($blockStateUpgrader->upgradeIntIdMeta($id, $data));
+					}catch(BlockStateDeserializeException){
+						$blockStateId = $unknownStateId;
 					}
+					$block = $stateRegistry->fromStateId($blockStateId);
+					$position = $block->getPosition();
+					$position->x = $x;
+					$position->y = $y;
+					$position->z = $z;
+					$position->world = null;
 					yield $block;
 				}
 			}
@@ -127,10 +153,9 @@ class Schematic{
 	 * setBlocks sets a generator of blocks to a schematic, using a bounding box to calculate the size.
 	 *
 	 * @param            $bb AxisAlignedBB
-	 * @param \Generator $blocks
+	 * @param iterable<Block> $blocks
 	 */
-	public function setBlocks(AxisAlignedBB $bb, \Generator $blocks) : void{
-		/** @var Block $block */
+	public function setBlocks(AxisAlignedBB $bb, iterable $blocks) : void{
 		$offset = new Vector3((int) $bb->minX, (int) $bb->minY, (int) $bb->minZ);
 		$max = new Vector3((int) $bb->maxX, (int) $bb->maxY, (int) $bb->maxZ);
 
@@ -139,13 +164,20 @@ class Schematic{
 		$this->height = $max->y - $offset->y + 1;
 
 		foreach($blocks as $block){
-			$pos = $block->getPos()->subtractVector($offset);
+			if(!$block instanceof Block){
+				throw new \InvalidArgumentException("setBlocks() expects only Block instances");
+			}
+			$pos = $block->getPosition()->subtractVector($offset);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
-			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getMeta());
+			if(strlen($this->data) <= $index){
+				$this->data .= str_repeat(chr(0), $index - strlen($this->data) + 1);
+			}
+			[$legacyId, $legacyMeta] = $this->mapBlockToLegacy($block);
+			$this->blocks[$index] = chr($legacyId & 0xff);
+			$this->data[$index] = chr($legacyMeta & 0x0f);
 		}
 	}
 
@@ -158,20 +190,21 @@ class Schematic{
 		$min = new Vector3(0, 0, 0);
 		$max = new Vector3(0, 0, 0);
 		foreach($blocks as $block){
-			if($block->getPos()->x < $min->x){
-				$min->x = $block->getPos()->x;
-			}elseif($block->getPos()->x > $max->x){
-				$max->x = $block->getPos()->x;
+			$blockPos = $block->getPosition();
+			if($blockPos->x < $min->x){
+				$min->x = $blockPos->x;
+			}elseif($blockPos->x > $max->x){
+				$max->x = $blockPos->x;
 			}
-			if($block->getPos()->y < $min->y){
-				$min->y = $block->getPos()->y;
-			}elseif($block->getPos()->y > $max->y){
-				$max->y = $block->getPos()->y;
+			if($blockPos->y < $min->y){
+				$min->y = $blockPos->y;
+			}elseif($blockPos->y > $max->y){
+				$max->y = $blockPos->y;
 			}
-			if($block->getPos()->z < $min->z){
-				$min->z = $block->getPos()->z;
-			}elseif($block->getPos()->z > $max->z){
-				$max->z = $block->getPos()->z;
+			if($blockPos->z < $min->z){
+				$min->z = $blockPos->z;
+			}elseif($blockPos->z > $max->z){
+				$max->z = $blockPos->z;
 			}
 		}
 		$this->height = $max->y - $min->y + 1;
@@ -179,58 +212,70 @@ class Schematic{
 		$this->length = $max->z - $min->z + 1;
 
 		foreach($blocks as $block){
-			$pos = $block->getPos()->subtractVector($min);
+			$pos = $block->getPosition()->subtractVector($min);
 			$index = $this->blockIndex($pos->x, $pos->y, $pos->z);
 			if(strlen($this->blocks) <= $index){
 				$this->blocks .= str_repeat(chr(0), $index - strlen($this->blocks) + 1);
 			}
-			$this->blocks[$index] = chr($block->getId());
-			$this->data[$index] = chr($block->getMeta());
+			if(strlen($this->data) <= $index){
+				$this->data .= str_repeat(chr(0), $index - strlen($this->data) + 1);
+			}
+			[$legacyId, $legacyMeta] = $this->mapBlockToLegacy($block);
+			$this->blocks[$index] = chr($legacyId & 0xff);
+			$this->data[$index] = chr($legacyMeta & 0x0f);
 		}
 	}
 
 	/**
-	 * fixBlock replaces a block that has a different block ID in Pocket Edition than in PC Edition.
-	 *
-	 * @param $block Block
-	 *
-	 * @return Block
+	 * @return array{int, int}
 	 */
-	protected function fixBlock(Block $block) : Block{
-		/** @var Block $new */
-		$new = null;
-		switch($block->getId()){
-			case 95:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::STAINED_GLASS, $block->getMeta());
-				break;
-			case 126:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::WOODEN_SLAB, $block->getMeta());
-				break;
-			case 125:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::DOUBLE_WOODEN_SLAB, $block->getMeta());
-				break;
-			case 188:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 1);
-				break;
-			case 189:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 2);
-				break;
-			case 190:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 3);
-				break;
-			case 191:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 5);
-				break;
-			case 192:
-				$new = BlockFactory::getInstance()->get(BlockLegacyIds::FENCE, 4);
-				break;
-			default:
-				return $block;
+	private function mapBlockToLegacy(Block $block) : array{
+		$stateId = $block->getStateId();
+		if(isset(self::$stateIdToLegacyCache[$stateId])){
+			return self::$stateIdToLegacyCache[$stateId];
 		}
-		//$new->setComponents($block->x, $block->y, $block->z);
-		[$new->getPos()->x, $new->getPos()->y, $new->getPos()->z] = [$block->getPos()->x, $block->getPos()->y, $block->getPos()->z];
 
-		return $new;
+		self::ensureLegacyReverseMapLoaded();
+		$serializer = GlobalBlockStateHandlers::getSerializer();
+		try{
+			$stateData = $serializer->serialize($stateId);
+		}catch(BlockStateSerializeException){
+			return self::$stateIdToLegacyCache[$stateId] = [0, 0];
+		}
+		$key = self::blockStateDataKey($stateData);
+		return self::$stateIdToLegacyCache[$stateId] = self::$stateKeyToLegacy[$key] ?? [0, 0];
+	}
+
+	private static function ensureLegacyReverseMapLoaded() : void{
+		if(self::$legacyReverseMapLoaded){
+			return;
+		}
+		self::$legacyReverseMapLoaded = true;
+
+		$legacyIds = LegacyBlockIdToStringIdMap::getInstance()->getLegacyToStringMap();
+		$blockDataUpgrader = GlobalBlockStateHandlers::getUpgrader();
+		foreach(array_keys($legacyIds) as $legacyId){
+			for($meta = 0; $meta <= 0x0f; $meta++){
+				try{
+					$stateData = $blockDataUpgrader->upgradeIntIdMeta($legacyId, $meta);
+				}catch(BlockStateDeserializeException){
+					continue;
+				}
+				$key = self::blockStateDataKey($stateData);
+				if(!isset(self::$stateKeyToLegacy[$key])){
+					self::$stateKeyToLegacy[$key] = [$legacyId, $meta];
+				}
+			}
+		}
+	}
+
+	private static function blockStateDataKey(BlockStateData $data) : string{
+		$stateValues = [];
+		foreach(Utils::stringifyKeys($data->getStates()) as $name => $tag){
+			$stateValues[$name] = $tag->getValue();
+		}
+		ksort($stateValues);
+		return $data->getName() . ':' . serialize($stateValues);
 	}
 
 	/**
