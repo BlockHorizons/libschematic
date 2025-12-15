@@ -1,5 +1,7 @@
 # libschematic
 A library for creating and manipulating MCEdit Schematic files.  
+  
+[![Hits](https://hitcount.dev/p/BlockHorizons/libschematic.svg)](https://hitcount.dev/p/BlockHorizons/libschematic)
 
 ### Implementing into plugins
 Best way to implement this code is to use it as a git module or Poggit virion. 
